@@ -6,6 +6,8 @@ import urlparse
 import time
 import sys
 processedURLsCounter = 0
+errorCounter = 0
+matchCounter = 0
 dupcheck = set()
 queue = None  # Html Queue
 textToLookFor = None
@@ -16,13 +18,19 @@ matchesList = []
 
 def processInitialUserInputAndInitiateVariables():
     global queue, textToLookFor, searchingLimit, matchTextRegex
-    searchingLimit = raw_input("Type in the maximum number of pages you want to search into:\n")
+    if len(sys.argv) >= 4:
+        searchingLimit = sys.argv[3]
+    else:
+        searchingLimit = raw_input("Type in the maximum number of pages you want to search into:\n")
     queue = Queue.Queue(int(searchingLimit))  # It's best to hard-code the queue's limit just in case
     if len(sys.argv) < 2:   # This was an experimental flag, which allows the user to run the python script with flags
         queue.put('http://' + raw_input("Type in a link without http//: \n"))
     else:
         queue.put(sys.argv[1])
-    textToLookFor = raw_input("Type in a word that you want to look for: \n")
+    if len(sys.argv) >= 3:
+        textToLookFor = sys.argv[2]
+    else:
+        textToLookFor = raw_input("Type in a word that you want to look for: \n")
     logFile = open("errorLog.txt", "w")
     logFile.close()
     matchTextRegex = [r"((<p([A-Za-z-0-9=\"'_ \\-]|\s){0,}?[>])){1}(.{0,}?",
@@ -38,14 +46,14 @@ def processAndTellResult():
     for match in matchesList:
         resultFiles.write(match)
     resultFiles.close()
-    print("Done! Matches have been written into matches.txt \nURLs processed: " + str(processedURLsCounter))
+    print("Done! Matches have been written into matches.txt \nURLs processed: " + str(processedURLsCounter)
+          + "\nURLs with positive matches: " + str(matchCounter) + "\nErrors while processing URLs: "
+          + str(errorCounter))
 
 
 def queueURLs(html, origLink):  # Processes HTML code looking for other URLs inside the domain
-    for url in re.findall('''<a[^>]+href=["'](.[^"']+)["']''', html, re.I):  # Searches the HTML for other URLs
-        link = url.split("#", 1)[0] \
-            if url.startswith("http") \
-            else '{uri.scheme}://{uri.netloc}'.format(uri=urlparse.urlparse(origLink)) + url.split("#", 1)[0]
+    for url in re.findall(r'<a[^>]+href=["\'](.[^"\']+)["\']', html, re.I):  # Searches the HTML for other URLs
+        link = url.split("#", 1)[0] if url.startswith("http") else '{uri.scheme}://{uri.netloc}'.format(uri=urlparse.urlparse(origLink)) + url.split("#", 1)[0]
         if link in dupcheck:  # Checks if link has already been processed
             continue
         dupcheck.add(link)
@@ -60,13 +68,14 @@ def queueURLs(html, origLink):  # Processes HTML code looking for other URLs ins
 
 def getHTML(link):
     try:
-        global processedURLsCounter
+        global processedURLsCounter, matchCounter, errorCounter
         processedURLsCounter += 1
         html = urllib.urlopen(link).read()  # Here we transform a URL into a string containing the HTML code of the page
         print("Processing link: " + link + "\n")
         # Bellow it will scan the HTML code for texts inside P elements which contain the chosen word or phrase
         for match in re.findall(matchTextRegex[0] + textToLookFor + matchTextRegex[1], html, re.I):
             # If it gets inside the loop it has basically found a match
+            matchCounter += 1
             print("Match found:\n")
             print(str(match[3]) + "\n\n")  # Warns the user that it has found a match
             # Adds match to list so we can throw all that into a text file later, doing this while processing HTMLs
@@ -77,6 +86,7 @@ def getHTML(link):
         dupcheck.add(link)
         raise
     except Exception, e:
+        errorCounter += 1
         dupcheck.add(link)  # If the link generates an exception we need to make sure it won't process it again
         print("Error while processing: " + link + " check errorLog.txt for more details \n")
         logFile = open("errorLog.txt", "a")
