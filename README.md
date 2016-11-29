@@ -12,6 +12,10 @@ The word or text you're looking for
 
 You can also use the script with the following parameters and jump right into execution:
 python Core.py "Url with http or https here" "Exact word or phrase you want to search for" "Max number of URLs you want to process"
+Example:
+```python
+python Core.py "https://www.stackoverflow.com" "You" "50"
+```
 
 # Additional info and recommendations
 
