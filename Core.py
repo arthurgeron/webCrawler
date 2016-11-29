@@ -77,12 +77,14 @@ def getHTML(link):
             # If it gets inside the loop it has basically found a match
             matchCounter += 1
             print("Match found:\n")
-            print(str(match[3]) + "\n\n")  # Warns the user that it has found a match
+            result = str(match[3])
+            result = re.sub(r'<.{0,}?>', '.', result)  # Replaces any tags left inside the text by a period
+            print(str(result) + "\n\n")  # Warns the user that it has found a match
             # Adds match to list so we can throw all that into a text file later, doing this while processing HTMLs
             # will just slow the process
-            matchesList.append("Link:\n " + link + "\nMatched paragraph:\n " + match[3] + "\n\n")
+            matchesList.append("Link:\n " + link + "\nMatched paragraph:\n " + result + "\n\n")
         queueURLs(html, link)  # Query queueURLs to look for other links in that page
-    except (KeyboardInterrupt, SystemExit):  # User can interrupt the process anytime
+    except (KeyboardInterrupt, SystemExit):  # User can interrupt the process anytime by pressing CTRL+C
         dupcheck.add(link)
         raise
     except Exception, e:
