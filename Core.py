@@ -5,6 +5,7 @@ import urllib
 import urlparse
 import time
 import sys
+import random
 processedURLsCounter = 0
 errorCounter = 0
 matchCounter = 0
@@ -14,6 +15,19 @@ textToLookFor = None
 searchingLimit = None
 matchTextRegex = None
 matchesList = []
+proxies = [ # Place your proxy list here with port, example: exampleproxy.com:8080
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+    {'http': ''},
+] # Either delete the content inside this list or fill it without no empty entry
+currentProxy = None
 
 
 def processInitialUserInputAndInitiateVariables():
@@ -68,9 +82,19 @@ def queueURLs(html, origLink):  # Processes HTML code looking for other URLs ins
 
 def getHTML(link):
     try:
-        global processedURLsCounter, matchCounter, errorCounter
+        global processedURLsCounter, matchCounter, errorCounter, proxies, currentProxy
+        if((currentProxy == None or processedURLsCounter % 20 == 0 ) and len(proxies)>0 ):
+            selectedProxy = random.choice(proxies)
+            if(selectedProxy['http'] != ''):
+                currentProxy = selectedProxy
+            else:
+                currentProxy = None
+
         processedURLsCounter += 1
-        html = urllib.urlopen(link).read()  # Here we transform a URL into a string containing the HTML code of the page
+        if(currentProxy != None):
+            html = urllib.urlopen(link, proxies=currentProxy).read()  # Query the url page html trough a proxy
+        else:
+            html = urllib.urlopen(link).read()
         print("Processing link: " + link + "\n")
         # Bellow it will scan the HTML code for texts inside P elements which contain the chosen word or phrase
         for match in re.findall(matchTextRegex[0] + textToLookFor + matchTextRegex[1], html, re.I):
@@ -94,6 +118,7 @@ def getHTML(link):
         logFile = open("errorLog.txt", "a")
         logFile.write("Error processing " + link + " : " + str(e) + "\n")  # Writes error to log file
         logFile.close()
+        processAndTellResult() # Make sure user won't lose the results collected 
         pass
 
 
